@@ -1,3 +1,4 @@
+build
 gaps/pkgs/*/*.o
 gaps/apps/*/*.o
 gaps/lib/*/*.a
