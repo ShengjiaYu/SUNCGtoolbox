@@ -1,6 +1,7 @@
 #include <math.h>
 #include <iostream>
 #include <string>
+#include <set>
 #include <pcl/filters/frustum_culling.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
@@ -11,6 +12,8 @@ static char *input_scene_file = NULL;
 static char *input_cameras_file = NULL;
 static char *input_cameranames_file = NULL;
 static char *input_categories_name = NULL;
+static char *input_img_directory = NULL;
+static char *object_directory = "/usr0/home/Datasets/SUNCG/object";
 static char *output_pcd_directory = NULL;
 static int print_verbose = 0;
 static int width = 640;
@@ -41,6 +44,9 @@ ReadScene(const char *filename)
     delete scene;
     return 0;
   }
+
+  // Move referenced models to the current scene tree
+  scene->RemoveReferences();
 
   // Print statistics
   if (print_verbose) {
@@ -158,6 +164,25 @@ ReadCategories(const char *filename)
 }
 
 
+static int
+ReadInstanceIds(const char *filename, std::set<int> *instance_ids)
+{
+  R2Grid node(width, height);
+  if (!node.ReadFile(filename)) {
+    fprintf(stderr, "Unable to read node image %s\n", filename);
+    return 0;
+  }
+  for (int i = 0; i < height; ++i) {
+    for (int j = 0; j < width; ++j) {
+      if (node(j, i) > 0) {
+        instance_ids->insert(node(j, i));
+      }
+    }
+  }
+  return 1;
+}
+
+
 int
 GetObjectPCD(const std::string& pcd_path,
              pcl::PointCloud<pcl::PointXYZ>::Ptr output,
@@ -206,63 +231,71 @@ CullPCD(const pcl::PointCloud<pcl::PointXYZ>::Ptr& input,
 int
 WritePCD(const char* output_pcd_directory)
 {
+  char node_img_path[100];
   std::string scene_name = scene->Node(0)->Name();
   for (int i=0; i<cameras.NEntries(); ++i) {
-    pcl::PointCloud<pcl::PointXYZL>::Ptr view(new pcl::PointCloud<pcl::PointXYZL>);
-    for (int j=0; j<scene->NNodes(); ++j) {
-      R3SceneNode *node = scene->Node(j);
-      if (!node->Parent()) continue;
+    pcl::PointCloud<pcl::PointXYZL>::Ptr output(new pcl::PointCloud<pcl::PointXYZL>);
+    sprintf(node_img_path, "%s/%06d_node.png", input_img_directory, i);
+    std::set<int> instance_ids;
+    if (!ReadInstanceIds(node_img_path, &instance_ids)) continue;
+    for (std::set<int>::iterator j = instance_ids.begin(); j != instance_ids.end(); ++j) {
+      R3SceneNode *node = scene->Node(*j - 1);
+      if (!strncmp(node->Name(), "Model", 5)) {    // If node is an object
+        pcl::PointCloud<pcl::PointXYZL>::Ptr labeled(new pcl::PointCloud<pcl::PointXYZL>);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr object(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr visible(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::Label>::Ptr labels(new pcl::PointCloud<pcl::Label>);
+        char pcd_name[100];
+        const char *model_id = strchr(node->Name(), '#') + 1;
+        sprintf(pcd_name, "%s/%s/%s.pcd", object_directory, model_id, model_id);
+        GetObjectPCD(pcd_name, object, node->CumulativeTransformation().Matrix());
+        pcl::Label label;
+        label.label = atoi(model_id);
+        *labels = pcl::PointCloud<pcl::Label>(object->width, object->height, label);
+        pcl::concatenateFields(*object, *labels, *labeled);
+        *output += *labeled;
+      }
+//      if (!node->Parent()) continue;
       // Objects not in the same room as the camera
-      if (strncmp(node->Parent()->Name(), camera_names[i],
-          strlen(node->Parent()->Name()))) continue;
-
-      pcl::PointCloud<pcl::PointXYZL>::Ptr labeled(new pcl::PointCloud<pcl::PointXYZL>);
-      pcl::PointCloud<pcl::PointXYZ>::Ptr object(new pcl::PointCloud<pcl::PointXYZ>);
-      pcl::PointCloud<pcl::PointXYZ>::Ptr visible(new pcl::PointCloud<pcl::PointXYZ>);
-      pcl::PointCloud<pcl::Label>::Ptr labels(new pcl::PointCloud<pcl::Label>);
+//      if (strncmp(node->Parent()->Name(), camera_names[i],
+//          strlen(node->Parent()->Name()))) continue;
 
       // Floors, walls and ceilings do not have a reference model
-      if (node->NReferences() == 0) {
-        std::string file_name = node->Name();
-        file_name.insert(file_name.find('_'), "rm");
-        file_name = "fr_" + file_name.substr(file_name.find('#')+1);
-        if (!strncmp(node->Name(), "Ceiling", 7)) {
-          file_name += "c";
-        } else if (!strncmp(node->Name(), "Floor", 5)) {
-          file_name += "f";
-        } else if (!strncmp(node->Name(), "Wall", 4)) {
-          file_name += "w";
-        }
-        std::string pcd_name = "../../room/" + scene_name + "/" + file_name + ".pcd";
-        GetObjectPCD(pcd_name, object, node->CumulativeTransformation().Matrix());
-        CullPCD(object, visible, cameras[i]);
-        pcl::Label label;
-        label.label = atoi(node->Info("index"));
-        *labels = pcl::PointCloud<pcl::Label>(visible->width, visible->height, label);
-        pcl::concatenateFields(*visible, *labels, *labeled);
-        *view += *labeled;
-      } else {
-        R3Scene *ref = node->Reference(0)->ReferencedScene();
-        std::string obj_name = ref->Filename();
-        std::string pcd_name = obj_name.substr(0, obj_name.rfind('.')) + ".pcd";
-        GetObjectPCD(pcd_name, object, node->CumulativeTransformation().Matrix());
-        CullPCD(object, visible, cameras[i]);
-        float visible_ratio = (float) visible->points.size() / object->points.size();
-        if (visible_ratio > min_visible_ratio) {
-          pcl::Label label;
-          label.label = atoi(ref->Node(0)->Info("index"));
-          *labels = pcl::PointCloud<pcl::Label>(object->width, object->height, label);
-          pcl::concatenateFields(*object, *labels, *labeled);
-          *view += *labeled;
-        }
-      }
+//      if (node->NReferences() == 0) {
+//        std::string file_name = node->Name();
+//        file_name.insert(file_name.find('_'), "rm");
+//        file_name = "fr_" + file_name.substr(file_name.find('#')+1);
+//        if (!strncmp(node->Name(), "Ceiling", 7)) {
+//          file_name += "c";
+//        } else if (!strncmp(node->Name(), "Floor", 5)) {
+//          file_name += "f";
+//        } else if (!strncmp(node->Name(), "Wall", 4)) {
+//          file_name += "w";
+//        }
+//        std::string pcd_name = "../../room/" + scene_name + "/" + file_name + ".pcd";
+//        GetObjectPCD(pcd_name, object, node->CumulativeTransformation().Matrix());
+//        CullPCD(object, visible, cameras[i]);
+//        pcl::Label label;
+//        label.label = atoi(node->Info("index"));
+//        *labels = pcl::PointCloud<pcl::Label>(visible->width, visible->height, label);
+//        pcl::concatenateFields(*visible, *labels, *labeled);
+//        *output += *labeled;
+//      } else {
+//        R3Scene *ref = node->Reference(0)->ReferencedScene();
+//        std::string obj_name = ref->Filename();
+//        std::string pcd_name = obj_name.substr(0, obj_name.rfind('.')) + ".pcd";
+//        CullPCD(object, visible, cameras[i]);
+//        float visible_ratio = (float) visible->points.size() / object->points.size();
+//        if (visible_ratio > min_visible_ratio) {
+//          label.label = atoi(ref->Node(0)->Info("index"));
+//        }
+//      }
     }
     char output_filename[1024];
     sprintf(output_filename, "%s/%06d.pcd", output_pcd_directory, i);
-    pcl::io::savePCDFile(output_filename, *view, /* binary_mode */ true);
+    pcl::io::savePCDFile(output_filename, *output, /* binary_mode */ true);
     if (print_verbose) {
-      std::cout << "Saved " << view->points.size() << " points to "
-                << output_filename << std::endl;
+      std::cout << "Saved " << output->points.size() << " points to " << output_filename << std::endl;
     }
   }
 
@@ -281,6 +314,7 @@ ParseArgs(int argc, char **argv)
       if (!strcmp(*argv, "-v")) print_verbose = 1;
       else if (!strcmp(*argv, "-categories")) { argc--; argv++; input_categories_name = *argv; }
       else if (!strcmp(*argv, "-min_visible_ratio")) { argc--; argv++; min_visible_ratio = atof(*argv); }
+      else if (!strcmp(*argv, "-object_directory")) {argc--; argv++; object_directory = *argv; }
       else {
         fprintf(stderr, "Invalid program argument: %s", *argv);
         exit(1);
@@ -290,7 +324,8 @@ ParseArgs(int argc, char **argv)
     else {
       if (!input_scene_file) input_scene_file = *argv;
       else if (!input_cameras_file) input_cameras_file = *argv;
-      else if (!input_cameranames_file) input_cameranames_file = *argv;
+//      else if (!input_cameranames_file) input_cameranames_file = *argv;
+      else if (!input_img_directory) input_img_directory = *argv;
       else if (!output_pcd_directory) output_pcd_directory = *argv;
       else { fprintf(stderr, "Invalid program argument: %s", *argv); exit(1); }
       argv++; argc--;
@@ -298,8 +333,8 @@ ParseArgs(int argc, char **argv)
   }
 
   // Check filenames
-  if (!input_scene_file || !input_cameras_file || !input_cameranames_file || !output_pcd_directory) {
-    fprintf(stderr, "Usage: scn2pcd inputscenefile inputcamerasfile outputpcddirectory\n");
+  if (!input_scene_file || !input_cameras_file || !input_img_directory || !output_pcd_directory) {
+    fprintf(stderr, "Usage: scn2pcd inputscenefile inputcamerasfile inputimgdirectory outputpcddirectory\n");
     return 0;
   }
 
@@ -316,9 +351,9 @@ int main(int argc, char **argv)
   // Read scene
   if (!ReadScene(input_scene_file)) exit(-1);
 
-  // Read cameras and camera names
+  // Read cameras
   if (!ReadCameras(input_cameras_file)) exit(-1);
-  if (!ReadCameraNames(input_cameranames_file)) exit(-1);
+//  if (!ReadCameraNames(input_cameranames_file)) exit(-1);
 
   // Read categories
   if (input_categories_name) {

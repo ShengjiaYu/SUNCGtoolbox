@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
         depth.ReadFile(depth_img_path);
         depth.Divide(1000);
 
-        // https://stackoverflow.com/questions/31265245/extracting-3d-coordinates-given-2d-image-points-depth-map-and-camera-calibratio
+        // https://stackoverflow.com/questions/31265245
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud <pcl::PointXYZ>(width, height));
         int depth_idx = 0;
         for (int y = 0; y < cloud->height; ++y) {
