@@ -51,7 +51,7 @@ static double eye_height_radius = 0.05;
 
 // Camera sampling variables
 
-static double position_sampling = 0.25;
+static double position_sampling = 1.0;
 static double angle_sampling = RN_PI / 3.0;
 static double interpolation_step = 0.1;
 
