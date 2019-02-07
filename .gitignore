@@ -1,5 +1,6 @@
 build
 .idea
+.vscode
 gaps/pkgs/*/*.o
 gaps/apps/*/*.o
 gaps/lib/*/*.a

@@ -15,6 +15,7 @@ PKG_LIBS= \
   $(LIB_DIR)/libR3Shapes.a \
   $(LIB_DIR)/libR2Shapes.a \
   $(LIB_DIR)/libRNBasics.a \
+  $(LIB_DIR)/libfglut.a \
   $(LIB_DIR)/libjpeg.a \
   $(LIB_DIR)/libpng.a
 

@@ -51,7 +51,7 @@ static double eye_height_radius = 0.05;
 
 // Camera sampling variables
 
-static double position_sampling = 1.0;
+static double position_sampling = 0.25;
 static double angle_sampling = RN_PI / 3.0;
 static double interpolation_step = 0.1;
 
@@ -850,7 +850,7 @@ SceneCoverageScore(const R3Camera& camera, R3Scene *scene, R3SceneNode *room_nod
   }
 
   // Compute score (log of product of number of pixels visible in each object)
-  RNScalar score = (node_count > min_visible_objects) ? sum : 0;
+  RNScalar score = (node_count >= min_visible_objects) ? sum : 0;
 
   // Delete pixel counts
   delete [] node_pixel_counts;
