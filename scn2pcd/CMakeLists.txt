@@ -13,3 +13,5 @@ set(GAPS_LIBRARIES R3Graphics R3Shapes R2Shapes RNBasics png jpeg)
 
 add_executable (scn2pcd scn2pcd.cpp)
 target_link_libraries (scn2pcd ${GAPS_LIBRARIES} ${PCL_LIBRARIES} -lGL -lGLU)
+add_executable (scn2poses scn2poses.cpp)
+target_link_libraries (scn2poses ${GAPS_LIBRARIES} -lGL -lGLU)

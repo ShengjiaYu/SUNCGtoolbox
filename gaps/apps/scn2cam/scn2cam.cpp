@@ -960,6 +960,8 @@ ComputeViewpointMask(R3SceneNode *room_node, R2Grid& mask)
   for (int i = 0; i < room_node->NChildren(); i++) {
     R3SceneNode *node = room_node->Child(i);
     if ((node == floor_node) || (node == ceiling_node)) continue;
+    printf("object %s height %f\n", node->Name(), node->BBox().YMax());
+    if (node->BBox().YMax() <= 1.2) continue;
     RasterizeIntoZXGrid(object_mask, node, object_bbox);
   }
 
@@ -1134,29 +1136,99 @@ CreateRoomCameras(void)
     R2Grid viewpoint_mask;
     if (!ComputeViewpointMask(room_node, viewpoint_mask)) continue;
 
-    // Sample directions
-    int nangles = (int) (RN_TWO_PI / angle_sampling + 0.5);
-    RNScalar angle_spacing = (nangles > 1) ? RN_TWO_PI / nangles : RN_TWO_PI;
-    for (int j = 0; j < nangles; j++) {
-      // Choose one camera for each direction in each room
-      R3Camera best_camera;
+    // // Sample directions
+    // int nangles = (int) (RN_TWO_PI / angle_sampling + 0.5);
+    // RNScalar angle_spacing = (nangles > 1) ? RN_TWO_PI / nangles : RN_TWO_PI;
+    // for (int j = 0; j < nangles; j++) {
+    //   // Choose one camera for each direction in each room
+    //   R3Camera best_camera;
 
+    //   // Sample positions 
+    //   R3Box room_bbox = room_node->BBox();
+    //   for (RNScalar z = room_bbox.ZMin(); z < room_bbox.ZMax(); z += position_sampling) {
+    //     for (RNScalar x = room_bbox.XMin(); x < room_bbox.XMax(); x += position_sampling) {
+    //       // Compute position
+    //       R2Point position(x + position_sampling*RNRandomScalar(), z + position_sampling*RNRandomScalar());
+
+    //       // Check viewpoint mask
+    //       R2Point viewpoint_mask_position(position[1], position[0]); // ZX          
+    //       RNScalar viewpoint_mask_value = viewpoint_mask.WorldValue(viewpoint_mask_position);
+    //       if (viewpoint_mask_value < 0.5) continue;
+
+    //       // Compute height
+    //       RNScalar y = room_bbox.YMin() + eye_height;
+    //       y += 2.0*(RNRandomScalar()-0.5) * eye_height_radius;
+    //       if (y > room_bbox.YMax()) continue;
+
+    //       // Compute direction
+    //       RNScalar angle = (j+RNRandomScalar()) * angle_spacing;
+    //       R2Vector direction = R2posx_vector;
+    //       direction.Rotate(angle);
+    //       direction.Normalize();
+
+    //       // Compute camera
+    //       R3Point viewpoint(position[0], y, position[1]);
+    //       R3Vector towards(direction.X(), -0.2, direction.Y());
+    //       towards.Normalize();
+    //       R3Vector right = towards % R3posy_vector;
+    //       right.Normalize();
+    //       R3Vector up = right % towards;
+    //       up.Normalize();
+    //       R3Camera camera(viewpoint, towards, up, xfov, yfov, neardist, fardist);
+
+    //       // Compute score for camera
+    //       camera.SetValue(SceneCoverageScore(camera, scene, room_node));
+    //       if (camera.Value() == 0) continue;
+    //       if (camera.Value() < min_score) continue;
+
+    //       // Remember best camera
+    //       if (camera.Value() > best_camera.Value()) {
+    //         best_camera = camera;
+    //       }
+    //     }
+    //   }
+    //   // Insert best camera for each region in room
+    //   if (best_camera.Value() > 0) {
+    //     if (print_debug) printf("ROOM %s %d : %g\n", room_node->Name(), j, best_camera.Value());
+    //     char name[1024];
+    //     sprintf(name, "%s_%d", room_node->Name(), j);
+    //     Camera *camera = new Camera(best_camera, name);
+    //     cameras.Insert(camera);
+    //     camera_count++;
+    //   }
+    // }
+    
+    // Sample positions 
       // Sample positions 
-      R3Box room_bbox = room_node->BBox();
-      for (RNScalar z = room_bbox.ZMin(); z < room_bbox.ZMax(); z += position_sampling) {
-        for (RNScalar x = room_bbox.XMin(); x < room_bbox.XMax(); x += position_sampling) {
-          // Compute position
-          R2Point position(x + position_sampling*RNRandomScalar(), z + position_sampling*RNRandomScalar());
+    // Sample positions 
+    R3Box room_bbox = room_node->BBox();
+    int index = 0;
+    for (RNScalar z = room_bbox.ZMin(); z < room_bbox.ZMax(); z += position_sampling) {
+      for (RNScalar x = room_bbox.XMin(); x < room_bbox.XMax(); x += position_sampling) {
+        // Choose one camera for each position in each room
+        R3Camera best_camera;
+        
+        // Compute position
+        R2Point position(x + position_sampling*RNRandomScalar(), z + position_sampling*RNRandomScalar());
 
-          // Check viewpoint mask
-          R2Point viewpoint_mask_position(position[1], position[0]); // ZX          
-          RNScalar viewpoint_mask_value = viewpoint_mask.WorldValue(viewpoint_mask_position);
-          if (viewpoint_mask_value < 0.5) continue;
-
-          // Compute height
-          RNScalar y = room_bbox.YMin() + eye_height;
+        // Compute height
+        RNScalar y = room_bbox.YMin() + eye_height;
+        y += 2.0*(RNRandomScalar()-0.5) * eye_height_radius;
+        while(y > room_bbox.YMax()){
+          y = room_bbox.YMin() + eye_height;
           y += 2.0*(RNRandomScalar()-0.5) * eye_height_radius;
-          if (y > room_bbox.YMax()) continue;
+        }
+        printf("z=%f, x=%f, y=%f\n", z, x, y);
+
+        // Check viewpoint mask
+        R2Point viewpoint_mask_position(position[1], position[0]); // ZX          
+        RNScalar viewpoint_mask_value = viewpoint_mask.WorldValue(viewpoint_mask_position);
+        if (viewpoint_mask_value < 0.5) continue;
+
+        // Sample directions
+        int nangles = (int) (RN_TWO_PI / angle_sampling + 0.5);
+        RNScalar angle_spacing = (nangles > 1) ? RN_TWO_PI / nangles : RN_TWO_PI;
+        for (int j = 0; j < nangles; j++) {
 
           // Compute direction
           RNScalar angle = (j+RNRandomScalar()) * angle_spacing;
@@ -1176,24 +1248,33 @@ CreateRoomCameras(void)
 
           // Compute score for camera
           camera.SetValue(SceneCoverageScore(camera, scene, room_node));
+          printf("  angle index=%d, camera value=%f\n", j, camera.Value());
           if (camera.Value() == 0) continue;
           if (camera.Value() < min_score) continue;
 
-          // Remember best camera
-          if (camera.Value() > best_camera.Value()) {
-            best_camera = camera;
-          }
+          // // Remember best camera
+          // if (camera.Value() > best_camera.Value()) {
+          //   best_camera = camera;
+          // }
+          if (print_debug) printf("ROOM %s %d : %g\n", room_node->Name(), index, camera.Value());
+          index++;
+          char name[1024];
+          sprintf(name, "%s_%d", room_node->Name(), index);
+          Camera *new_camera = new Camera(camera, name);
+          cameras.Insert(new_camera);
+          camera_count++;
         }
-      }
 
-      // Insert best camera for direction in room
-      if (best_camera.Value() > 0) {
-        if (print_debug) printf("ROOM %s %d : %g\n", room_node->Name(), j, best_camera.Value());
-        char name[1024];
-        sprintf(name, "%s_%d", room_node->Name(), j);
-        Camera *camera = new Camera(best_camera, name);
-        cameras.Insert(camera);
-        camera_count++;
+        // // Insert best camera for each region in room
+        // if (best_camera.Value() > 0) {
+        //   if (print_debug) printf("ROOM %s %d : %g\n", room_node->Name(), index, best_camera.Value());
+        //   index++;
+        //   char name[1024];
+        //   sprintf(name, "%s_%d", room_node->Name(), index);
+        //   Camera *camera = new Camera(best_camera, name);
+        //   cameras.Insert(camera);
+        //   camera_count++;
+        // }
       }
     }
   }

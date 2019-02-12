@@ -13,7 +13,5 @@ set(GAPS_LIBRARIES R3Graphics R3Shapes R2Shapes RNBasics png jpeg)
 
 add_executable (depth2pcd depth2pcd.cpp)
 target_link_libraries (depth2pcd ${PCL_LIBRARIES} ${GAPS_LIBRARIES} -lGL -lGLU)
-add_executable (depth2pcd2 depth2pcd2.cpp)
-target_link_libraries (depth2pcd2 ${PCL_LIBRARIES} ${GAPS_LIBRARIES} -lGL -lGLU)
 add_executable (fuse_depths fuse_depths.cpp)
 target_link_libraries (fuse_depths ${PCL_LIBRARIES} ${GAPS_LIBRARIES} -lGL -lGLU)
