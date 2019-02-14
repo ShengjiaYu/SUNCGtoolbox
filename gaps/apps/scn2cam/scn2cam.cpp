@@ -960,7 +960,7 @@ ComputeViewpointMask(R3SceneNode *room_node, R2Grid& mask)
   for (int i = 0; i < room_node->NChildren(); i++) {
     R3SceneNode *node = room_node->Child(i);
     if ((node == floor_node) || (node == ceiling_node)) continue;
-    printf("object %s height %f\n", node->Name(), node->BBox().YMax());
+    // printf("object %s height %f\n", node->Name(), node->BBox().YMax());
     if (node->BBox().YMax() <= 1.2) continue;
     RasterizeIntoZXGrid(object_mask, node, object_bbox);
   }
@@ -1198,8 +1198,6 @@ CreateRoomCameras(void)
     //   }
     // }
     
-    // Sample positions 
-      // Sample positions 
     // Sample positions 
     R3Box room_bbox = room_node->BBox();
     int index = 0;

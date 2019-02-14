@@ -1,21 +1,25 @@
 #!/bin/bash
 
-toolboxdir="/usr1/home/wyuan1/Repos/SUNCGtoolbox"
-catfile="/media/usb0/data/SUNCG/metadata/ModelCategoryMapping.csv"
+toolboxdir="//home/mengqing/SUNCGtoolbox"
+catfile="/data/SUNCG/metadata/ModelCategoryMapping.csv"
 outputdir="."
 
 echo "Processing $1"
 cd $1
 # if [ -d "$outputdir" ]; then
-#     mkdir $outputdir
+#     rm -rf $outputdir
 # fi
+# mkdir -m 775 $outputdir
+# chgrp users $outputdir
 
 # $toolboxdir/gaps/bin/x86_64/scn2scn house.json house.obj
 
 # generate cameras
 $toolboxdir/gaps/bin/x86_64/scn2cam house.json $outputdir/cameras.txt -categories $catfile \
     -width 320 -height 240 -xfov 0.54 \
-    -position_sampling 1.5 -eye_height 1.38 -eye_height_radius 0.1 \
+    -position_sampling 1.5 -eye_height 1.5 -eye_height_radius 0.1 \
+    -min_visible_objects 0 \
+    -angle_sampling 0.628 \
     -output_camera_names $outputdir/camera_names.txt \
     -output_camera_extrinsics $outputdir/extrinsics.txt \
     -output_camera_intrinsics $outputdir/intrinsics.txt \
@@ -24,12 +28,15 @@ $toolboxdir/gaps/bin/x86_64/scn2cam house.json $outputdir/cameras.txt -categorie
 # render images
 rm -rf $outputdir/imgs
 mkdir -p $outputdir/imgs
+#$toolboxdir/gaps/bin/x86_64/scn2img house.json $outputdir/cameras.txt $outputdir/imgs \
+#    -width 320 -height 240 -capture_color_images -capture_depth_images -capture_node_images -v
 $toolboxdir/gaps/bin/x86_64/scn2img house.json $outputdir/cameras.txt $outputdir/imgs \
+    -kinect_noise_fraction 0.01 \
     -width 320 -height 240 -capture_color_images -capture_kinect_images -capture_node_images -v
 
 # generate partial point cloud
 $toolboxdir/depth2pcd/build/fuse_depths $outputdir/intrinsics.txt $outputdir/extrinsics.txt \
-    $outputdir/imgs $outputdir/house_partial.pcd -width 320 -height 240 -leaf_size 0.05 -v
+    $outputdir/imgs $outputdir/house_partial.pcd $outputdir/instance.txt -width 320 -height 240 -leaf_size 0.05 -v
 
 # write object poses
 $toolboxdir/scn2pcd/build/scn2poses house.json $outputdir/object_poses

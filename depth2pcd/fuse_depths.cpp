@@ -11,6 +11,7 @@ static char *intrinsics_file = NULL;
 static char *extrinsics_file = NULL;
 static char *input_img_directory = NULL;
 static char *output_pcd_file = NULL;
+static char *output_instance_file = NULL;
 
 
 static int
@@ -35,14 +36,15 @@ ParseArgs(int argc, char **argv)
       else if (!extrinsics_file) extrinsics_file = *argv;
       else if (!input_img_directory) input_img_directory = *argv;
       else if (!output_pcd_file) output_pcd_file = *argv;
+      else if (!output_instance_file) output_instance_file = *argv;
       else { fprintf(stderr, "Invalid program argument: %s", *argv); exit(1); }
       argv++; argc--;
     }
   }
 
   // Check filenames
-  if (!intrinsics_file || !extrinsics_file || !input_img_directory || !output_pcd_file) {
-    fprintf(stderr, "Usage: fuse_depths intrinsicsfile extrinsicsfile inputimgdirectory outputpcdfile\n");
+  if (!intrinsics_file || !extrinsics_file || !input_img_directory || !output_pcd_file || !output_instance_file) {
+    fprintf(stderr, "Usage: fuse_depths intrinsicsfile extrinsicsfile inputimgdirectory outputpcdfile outputinstancefile\n");
     return 0;
   }
 
@@ -120,7 +122,7 @@ int main(int argc, char **argv) {
   grid.filter(*filtered);
 
   std::ofstream labels_file;
-  labels_file.open("instances.txt");
+  labels_file.open(output_instance_file);
   for (int i = 0; i < filtered->size(); ++i) {
     labels_file << filtered->points[i].label << std::endl;
   }

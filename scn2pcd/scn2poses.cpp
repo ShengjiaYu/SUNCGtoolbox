@@ -65,7 +65,7 @@ WriteObjects(const char *directory)
   for (int j=0; j<scene->NNodes(); ++j) {
     R3SceneNode *node = scene->Node(j);
     if (!strncmp(node->Name(), "Model", 5)) {
-      char *filename;
+      char filename[1024];
       sprintf(filename, "%s/%d_%s.txt", directory, node->SceneIndex() + 1, node->Name() + 6);
       R4Matrix M = node->CumulativeTransformation().Matrix();
       std::ofstream output_file;
