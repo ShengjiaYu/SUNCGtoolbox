@@ -1,6 +1,6 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/transforms.h>
-#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/voxel_grid_label.h>
 #include "R3Graphics/R3Graphics.h"
 
 static int width = 640;
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
 
   // filter after fuse
   pcl::PointCloud<pcl::PointXYZRGBL>::Ptr filtered(new pcl::PointCloud <pcl::PointXYZRGBL>);
-  pcl::VoxelGrid<pcl::PointXYZRGBL> grid;
+  pcl::VoxelGridLabel grid;
   grid.setInputCloud(fused);
   grid.setLeafSize(leaf_size, leaf_size, leaf_size);
   grid.filter(*filtered);

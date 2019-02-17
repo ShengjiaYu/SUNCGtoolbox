@@ -47,6 +47,7 @@ static int height = 480;
 static double xfov = 0.5; // half-angle in radians
 static double eye_height = 1.55;
 static double eye_height_radius = 0.05;
+static double eye_pitch_angle = 0.;
 
 
 // Camera sampling variables
@@ -1233,10 +1234,11 @@ CreateRoomCameras(void)
           R2Vector direction = R2posx_vector;
           direction.Rotate(angle);
           direction.Normalize();
+          RNScalar direction_y = -0.2 + 2.0 * (RNRandomScalar() - 0.5) * eye_pitch_angle;
 
           // Compute camera
           R3Point viewpoint(position[0], y, position[1]);
-          R3Vector towards(direction.X(), -0.2, direction.Y());
+          R3Vector towards(direction.X(), direction_y, direction.Y());
           towards.Normalize();
           R3Vector right = towards % R3posy_vector;
           right.Normalize();
@@ -1597,6 +1599,7 @@ ParseArgs(int argc, char **argv)
       else if (!strcmp(*argv, "-xfov")) { argc--; argv++; xfov = atof(*argv); }
       else if (!strcmp(*argv, "-eye_height")) { argc--; argv++; eye_height = atof(*argv); }
       else if (!strcmp(*argv, "-eye_height_radius")) { argc--; argv++; eye_height_radius = atof(*argv); }
+      else if (!strcmp(*argv, "-eye_pitch_angle")) { argc--; argv++; eye_pitch_angle = atof(*argv); }
       else if (!strcmp(*argv, "-min_distance_from_obstacle")) { argc--; argv++; min_distance_from_obstacle = atof(*argv); }
       else if (!strcmp(*argv, "-min_visible_objects")) { argc--; argv++; min_visible_objects = atoi(*argv); }
       else if (!strcmp(*argv, "-min_score")) { argc--; argv++; min_score = atof(*argv); }
