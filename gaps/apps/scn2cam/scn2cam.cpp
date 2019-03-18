@@ -1202,13 +1202,16 @@ CreateRoomCameras(void)
     // Sample positions 
     R3Box room_bbox = room_node->BBox();
     int index = 0;
-    for (RNScalar z = room_bbox.ZMin(); z < room_bbox.ZMax(); z += position_sampling) {
-      for (RNScalar x = room_bbox.XMin(); x < room_bbox.XMax(); x += position_sampling) {
+    RNScalar z_position_sampling = (room_bbox.ZMax() - room_bbox.ZMin()) / position_sampling;
+    RNScalar x_position_sampling = (room_bbox.XMax() - room_bbox.XMin()) / position_sampling;
+
+    for (RNScalar z = room_bbox.ZMin(); z < room_bbox.ZMax(); z += z_position_sampling) {
+      for (RNScalar x = room_bbox.XMin(); x < room_bbox.XMax(); x += x_position_sampling) {
         // Choose one camera for each position in each room
         R3Camera best_camera;
         
         // Compute position
-        R2Point position(x + position_sampling*RNRandomScalar(), z + position_sampling*RNRandomScalar());
+        R2Point position(x + x_position_sampling*RNRandomScalar(), z + z_position_sampling*RNRandomScalar());
 
         // Compute height
         RNScalar y = room_bbox.YMin() + eye_height;
@@ -1217,12 +1220,12 @@ CreateRoomCameras(void)
           y = room_bbox.YMin() + eye_height;
           y += 2.0*(RNRandomScalar()-0.5) * eye_height_radius;
         }
-        printf("z=%f, x=%f, y=%f\n", z, x, y);
 
         // Check viewpoint mask
         R2Point viewpoint_mask_position(position[1], position[0]); // ZX          
         RNScalar viewpoint_mask_value = viewpoint_mask.WorldValue(viewpoint_mask_position);
-        if (viewpoint_mask_value < 0.5) continue;
+        if (print_debug) printf("viewpoint_mask_value %f\n", viewpoint_mask_value);
+        // if (viewpoint_mask_value < 0.5) continue;
 
         // Sample directions
         int nangles = (int) (RN_TWO_PI / angle_sampling + 0.5);
@@ -1234,7 +1237,7 @@ CreateRoomCameras(void)
           R2Vector direction = R2posx_vector;
           direction.Rotate(angle);
           direction.Normalize();
-          RNScalar direction_y = -0.2 + 2.0 * (RNRandomScalar() - 0.5) * eye_pitch_angle;
+          RNScalar direction_y = -0.4 + 2.0 * (RNRandomScalar() - 0.5) * eye_pitch_angle;
 
           // Compute camera
           R3Point viewpoint(position[0], y, position[1]);
@@ -1248,7 +1251,7 @@ CreateRoomCameras(void)
 
           // Compute score for camera
           camera.SetValue(SceneCoverageScore(camera, scene, room_node));
-          printf("  angle index=%d, camera value=%f\n", j, camera.Value());
+          if (print_debug) printf("  angle index=%d, camera value=%f\n", j, camera.Value());
           if (camera.Value() == 0) continue;
           if (camera.Value() < min_score) continue;
 
@@ -1481,6 +1484,9 @@ CreateAndWriteCameras(void)
   }
   else {
     SortCameras();
+   while (cameras.NEntries()>300) {
+       cameras.RemoveTail();
+   }
   }
 
   // Write cameras

@@ -2,28 +2,32 @@
 
 toolboxdir="//home/mengqing/SUNCGtoolbox"
 catfile="/data/SUNCG/metadata/ModelCategoryMapping.csv"
-outputdir="new_sample_all_camera_2"
+outputdir="new_sample"
 
 echo "Processing $1"
 cd $1
+if [ -f "$outputdir/house_partial.pcd" ]; then
+    echo "$1 has been processed!"
+    exit 0
+fi
 if [ -d "$outputdir" ]; then
     rm -rf $outputdir
 fi
 mkdir -m 775 $outputdir
 chgrp users $outputdir
 
-# $toolboxdir/gaps/bin/x86_64/scn2scn house.json house.obj
+$toolboxdir/gaps/bin/x86_64/scn2scn house.json house.obj
 
 # generate cameras
 $toolboxdir/gaps/bin/x86_64/scn2cam house.json $outputdir/cameras.txt -categories $catfile \
     -width 320 -height 240 -xfov 0.54 \
-    -position_sampling 1.5 -eye_height 1.38 -eye_height_radius 0.1 \
+    -position_sampling 2 -eye_height 1.38 -eye_height_radius 0.1 \
     -min_visible_objects 0 \
-    -angle_sampling 0.628 -eye_pitch_angle 0.2\
+    -angle_sampling 0.628 -eye_pitch_angle 0.1\
     -output_camera_names $outputdir/camera_names.txt \
     -output_camera_extrinsics $outputdir/extrinsics.txt \
     -output_camera_intrinsics $outputdir/intrinsics.txt \
-    -output_nodes $outputdir/nodes.txt
+    -output_nodes $outputdir/nodes.txt -v
 
 # render images
 rm -rf $outputdir/imgs
@@ -41,9 +45,9 @@ $toolboxdir/depth2pcd/build/fuse_depths $outputdir/intrinsics.txt $outputdir/ext
 # write object poses
 $toolboxdir/scn2pcd/build/scn2poses house.json $outputdir/object_poses
 
-# generating complete point cloud
-# $toolboxdir/scn2pcd/build/scn2pcd house.json house.pcd -categories $catfile -v
-# $toolboxdir/scn2pcd/build/scn2pcd -c -v $datadir
+generating complete point cloud
+$toolboxdir/scn2pcd/build/scn2pcd house.json house.pcd -categories $catfile -v
+$toolboxdir/scn2pcd/build/scn2pcd -c -v $datadir
 
 #rm -rf object_pcds
 #mkdir -p object_pcds

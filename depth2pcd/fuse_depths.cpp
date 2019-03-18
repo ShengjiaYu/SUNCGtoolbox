@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
   FILE *extrinsics = fopen(extrinsics_file, "r");
 
   int i = 0;
-  char depth_img_path[100], rgb_img_path[100], node_img_path[100];
+  char depth_img_path[200], rgb_img_path[200], node_img_path[200];
   RNScalar fx, fy, s, cx, cy, zero1, zero2, zero3, one;
   RNScalar r1, r2, r3, r4, r5, r6, r7, r8, r9, t1, t2, t3;
   pcl::PointCloud<pcl::PointXYZRGBL>::Ptr fused(new pcl::PointCloud <pcl::PointXYZRGBL>);
